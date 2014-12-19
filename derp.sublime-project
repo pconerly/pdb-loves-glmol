@@ -1,0 +1,10 @@
+{
+	"folders":
+	[
+		{
+			"path": "/Users/peterconerly/code/webgl-protein-viewer",
+            "folder_exclude_patterns": ["build", "node_modules"],
+            "file_exclude_patterns": ["*.sublime-workspace"]
+		}
+	]
+}

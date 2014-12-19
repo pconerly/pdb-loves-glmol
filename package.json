@@ -1,0 +1,40 @@
+{
+  "name": "webgl-viewer",
+  "version": "0.0.1",
+  "description": "Writing Game of Life in react and backbone",
+  "main": "src/app.cjsx",
+  "dependencies": {
+    "backbone": "^1.1.2",
+    "handlebars": "^2.0.0",
+    "jquery": "^2.1.1",
+    "react": "~0.12.1",
+    "underscore": "^1.7.0",
+    "underscore.string": "^2.3.3",
+    "react-bootstrap": "~0.13.0",
+    "three": "~0.69.0",
+    "xmljson": "~0.2.0"
+  },
+  "devDependencies": {
+    "browserify": "~2.36.0",
+    "envify": "~0.2.0",
+    "reactify": "~0.4.0",
+    "statics": "~0.1.0",
+    "uglifyjs": "~2.3.6",
+    "watchify": "~0.4.1",
+    "coffee-reactify": "~0.5.1"
+  },
+  "scripts": {
+    "start": "STATIC_ROOT=./static watchify -o build/app.js -v -d .",
+    "build": "STATIC_ROOT=./static NODE_ENV=production browserify . | uglifyjs -cm > browser-bundle.min.js",
+    "collect-static": "collect-static . ./static",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Peter Conerly",
+  "license": "Apache 2",
+  "browserify": {
+    "transform": [
+      "coffee-reactify",
+      "envify"
+    ]
+  }
+}
