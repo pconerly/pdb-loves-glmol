@@ -52,7 +52,7 @@ Router = Backbone.Router.extend
     $(document).attr('title', 'react-of-life')
 
   pdbid: (query) ->
-    AppStore.fetchDescription query
+    AppStore.fetch query
     console.log "query: #{query}"
     React.render(
       <TopNav/>,

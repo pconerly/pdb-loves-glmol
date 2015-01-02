@@ -46,7 +46,7 @@ GLmolComponent = React.createClass(
   componentDidUpdate: () ->
     console.log "glmol component updated"
     # The actual rendering for webgl protein viewer
-    if @isMounted() and @state.curPdbId and _.has @state.item, 'glmol'
+    if @isMounted() and @state.curPdbId and _.has(@state.item, 'glmol') and _.has(@state.item, 'pdbfile')
       # clean up the container
       $("##{@containerId()}").empty()
 
@@ -54,8 +54,8 @@ GLmolComponent = React.createClass(
       @state.item.glmol.setElement(@containerId())
 
       # and render
-      @state.item.glmol.loadMoleculeStr(false, window.pdbfile) # @state.item.pdffile)
-      # @state.item.glmol.loadMoleculeStr(false, @state.item.pdffile)
+      # @state.item.glmol.loadMoleculeStr(false, window.pdbfile) # @state.item.pdffile)
+      @state.item.glmol.loadMoleculeStr(false, @state.item.pdbfile)
 )
 
 

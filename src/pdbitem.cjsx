@@ -51,13 +51,13 @@ PDBItem = React.createClass(
     else
      return (
       <div key="pdb-3d" className="pdb-info">
-        <h3>loading... (derp a little derp)</h3>
+        <h3>loading... (or not found?)</h3>
       </div>)
 
   glmol: ->
     # ^ editorial note, this is a bad idea.  The logic should all be in GlmolComponent
     if @state.item
-      if _.has @state.item, 'glmol'
+      if _.has @state.item, 'pdbfile'
         return(
           <div className="pdb-3d">
             <h4>3d infos!!</h4>
