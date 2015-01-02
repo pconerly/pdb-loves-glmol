@@ -1,4 +1,12 @@
 
 .dropdown-menu li.primary {
-	background-color: #A1DDBB;
+  background-color: #A1DDBB;
+}
+
+.glmol_container {
+  clear:both;
+  width: 600px;
+  height: 600px;
+  border: 1px blue solid;
+
 }

@@ -47,7 +47,11 @@ TopNav = React.createClass(
       key  # sort by key
 
     for key in keys
-      pdbs.push(<MenuItem eventKey={key} href="#pdb-id/#{key}" className="primary">{key}</MenuItem>)
+      primary = ''
+      if key is @state.curPdbId
+        primary = 'primary'
+      pdbs.push(<MenuItem eventKey={key} href="#pdb-id/#{key}" 
+        className={primary} key={key} >{key}</MenuItem>)
 
     disabled = ''
     if keys.length is 0

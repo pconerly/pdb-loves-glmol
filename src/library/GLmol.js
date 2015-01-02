@@ -1,10 +1,11 @@
 /*
- GLmol - Molecular Viewer on WebGL/Javascript (0.47)
+ GLmol - Molecular Viewer on WebGL/Javascript (0.48)
   (C) Copyright 2011-2012, biochem_fan
       License: dual license of MIT or LGPL3
-
+      
   Contributors:
     Robert Hanson for parseXYZ, deferred instantiation
+    Dmitry Fedorov - migration to ThreeJS 69, Copyright 2014 (C) ViQi LLC
 
   This program uses
       Three.js 
@@ -14,9 +15,6 @@
          http://jquery.org/
          Copyright (c) 2011 John Resig
  */
-
-// Peter's notes-- Will this work with three v0.69 and jquery v2.1.1 ?
-// var THREE = require('three');
 
 // Workaround for Intel GMA series (gl_FrontFacing causes compilation error)
 THREE.ShaderLib.lambert.fragmentShader = THREE.ShaderLib.lambert.fragmentShader.replace("gl_FrontFacing", "true");
@@ -53,47 +51,15 @@ GLmol.prototype.create = function(id, suppressAutoload) {
                    "F": 1.47, "P": 1.80, "S": 1.80, "CL": 1.75, "BR": 1.85, "SE": 1.90,
                    "ZN": 1.39, "CU": 1.4, "NI": 1.63};
 
-   this.id = id;
    this.aaScale = 1; // or 2
 
-   this.container = $('#' + this.id);
-   this.WIDTH = this.container.width() * this.aaScale, this.HEIGHT = this.container.height() * this.aaScale;
-   this.ASPECT = this.WIDTH / this.HEIGHT;
-   this.NEAR = 1, FAR = 800;
-   this.CAMERA_Z = -150;
-   this.renderer = new THREE.WebGLRenderer({antialias: true});
-   this.renderer.sortObjects = false; // hopefully improve performance
-   // 'antialias: true' now works in Firefox too!
-   // setting this.aaScale = 2 will enable antialias in older Firefox but GPU load increases.
-   this.renderer.domElement.style.width = "100%";
-   this.renderer.domElement.style.height = "100%";
-   this.container.append(this.renderer.domElement);
-   this.renderer.setSize(this.WIDTH, this.HEIGHT);
-
-   this.camera = new THREE.PerspectiveCamera(20, this.ASPECT, 1, 800); // will be updated anyway
-   this.camera.position = new TV3(0, 0, this.CAMERA_Z);
-   this.camera.lookAt(new TV3(0, 0, 0));
-   this.perspectiveCamera = this.camera;
-   this.orthoscopicCamera = new THREE.OrthographicCamera();
-   this.orthoscopicCamera.position.z = this.CAMERA_Z;
-   this.orthoscopicCamera.lookAt(new TV3(0, 0, 0));
-
-   var self = this;
-   $(window).resize(function() { // only window can capture resize event
-      self.WIDTH = self.container.width() * self.aaScale;
-      self.HEIGHT = self.container.height() * self.aaScale;
-      self.ASPECT = self.WIDTH / self.HEIGHT;
-      self.renderer.setSize(self.WIDTH, self.HEIGHT);
-      self.camera.aspect = self.ASPECT;
-      self.camera.updateProjectionMatrix();
-      self.show();
-   });
+   this.setElement(id);
 
    this.scene = null;
    this.rotationGroup = null; // which contains modelGroup
    this.modelGroup = null;
 
-   this.bgColor = 0x000000;
+   this.bgColor = 0x434343; //0x000000;
    this.fov = 20;
    this.fogStart = 0.4;
    this.slabNear = -50; // relative to the center of rotationGroup
@@ -130,9 +96,46 @@ GLmol.prototype.create = function(id, suppressAutoload) {
    this.loadMolecule();
 }
 
+GLmol.prototype.setElement = function(id) {
+   this.id = id;
+
+   this.container = $('#' + this.id);
+   this.WIDTH = this.container.width() * this.aaScale, this.HEIGHT = this.container.height() * this.aaScale;
+   this.ASPECT = this.WIDTH / this.HEIGHT;
+   this.NEAR = 1, FAR = 800;
+   this.CAMERA_Z = -150;
+   this.renderer = new THREE.WebGLRenderer({antialias: true});
+   this.renderer.sortObjects = false; // hopefully improve performance
+   // 'antialias: true' now works in Firefox too!
+   // setting this.aaScale = 2 will enable antialias in older Firefox but GPU load increases.
+   this.renderer.domElement.style.width = "100%";
+   this.renderer.domElement.style.height = "100%";
+   this.container.append(this.renderer.domElement);
+   this.renderer.setSize(this.WIDTH, this.HEIGHT);
+
+   this.camera = new THREE.PerspectiveCamera(20, this.ASPECT, 1, 800); // will be updated anyway
+   this.camera.position.copy( new TV3(0, 0, this.CAMERA_Z) );  // dima instead: new TV3(0, 0, this.CAMERA_Z);
+   this.camera.lookAt(new TV3(0, 0, 0));
+   this.perspectiveCamera = this.camera;
+   this.orthoscopicCamera = new THREE.OrthographicCamera();
+   this.orthoscopicCamera.position.z = this.CAMERA_Z;
+   this.orthoscopicCamera.lookAt(new TV3(0, 0, 0));
+
+   var self = this;
+   $(window).resize(function() { // only window can capture resize event
+      self.WIDTH = self.container.width() * self.aaScale;
+      self.HEIGHT = self.container.height() * self.aaScale;
+      self.ASPECT = self.WIDTH / self.HEIGHT;
+      self.renderer.setSize(self.WIDTH, self.HEIGHT);
+      self.camera.aspect = self.ASPECT;
+      self.camera.updateProjectionMatrix();
+      self.show();
+   });
+};
+
 GLmol.prototype.setupLights = function(scene) {
    var directionalLight =  new THREE.DirectionalLight(0xFFFFFF);
-   directionalLight.position = new TV3(0.2, 0.2, -1).normalize();
+   directionalLight.position.copy(new TV3(0.2, 0.2, -1).normalize());
    directionalLight.intensity = 1.2;
    scene.add(directionalLight);
    var ambientLight = new THREE.AmbientLight(0x202020);
@@ -208,10 +211,10 @@ GLmol.prototype.parseXYZ = function(str) {
    for (var i = 1; i < atomCount; i++) // hopefully XYZ is small enough
       for (var j = i + 1; j <= atomCount; j++)
          if (this.isConnected(atoms[i], atoms[j])) {
-	    atoms[i].bonds.push(j);
-	    atoms[i].bondOrder.push(1);
-    	    atoms[j].bonds.push(i);
-     	    atoms[j].bondOrder.push(1);
+       atoms[i].bonds.push(j);
+       atoms[i].bondOrder.push(1);
+          atoms[j].bonds.push(i);
+          atoms[j].bondOrder.push(1);
          }
    protein.smallMolecule = true;
    return true;
@@ -359,8 +362,8 @@ GLmol.prototype.subdivide = function(_points, DIV) { // points as Vector3
       var p0 = points[(i == -1) ? 0 : i];
       var p1 = points[i + 1], p2 = points[i + 2];
       var p3 = points[(i == size - 3) ? size - 1 : i + 3];
-      var v0 = new TV3().sub(p2, p0).multiplyScalar(0.5);
-      var v1 = new TV3().sub(p3, p1).multiplyScalar(0.5);
+      var v0 = new TV3().subVectors(p2, p0).multiplyScalar(0.5);
+      var v1 = new TV3().subVectors(p3, p1).multiplyScalar(0.5);
       for (var j = 0; j < DIV; j++) {
          var t = 1.0 / DIV * j;
          var x = p1.x + t * v0.x 
@@ -439,7 +442,7 @@ GLmol.prototype.drawBondAsStickSub = function(group, atom1, atom2, bondR, order)
    if (order > 1) delta = this.calcBondDelta(atom1, atom2, bondR * 2.3);
    var p1 = new TV3(atom1.x, atom1.y, atom1.z);
    var p2 = new TV3(atom2.x, atom2.y, atom2.z);
-   var mp = p1.clone().addSelf(p2).multiplyScalar(0.5);
+   var mp = p1.clone().add(p2).multiplyScalar(0.5);
 
    var c1 = new TCo(atom1.color), c2 = new TCo(atom2.color);
    if (order == 1 || order == 3) {
@@ -447,12 +450,12 @@ GLmol.prototype.drawBondAsStickSub = function(group, atom1, atom2, bondR, order)
       this.drawCylinder(group, p2, mp, bondR, atom2.color);
    }
    if (order > 1) {
-      tmp = mp.clone().addSelf(delta);
-      this.drawCylinder(group, p1.clone().addSelf(delta), tmp, bondR, atom1.color);
-      this.drawCylinder(group, p2.clone().addSelf(delta), tmp, bondR, atom2.color);
-      tmp = mp.clone().subSelf(delta);
-      this.drawCylinder(group, p1.clone().subSelf(delta), tmp, bondR, atom1.color);
-      this.drawCylinder(group, p2.clone().subSelf(delta), tmp, bondR, atom2.color);
+      tmp = mp.clone().add(delta);
+      this.drawCylinder(group, p1.clone().add(delta), tmp, bondR, atom1.color);
+      this.drawCylinder(group, p2.clone().add(delta), tmp, bondR, atom2.color);
+      tmp = mp.clone().sub(delta);
+      this.drawCylinder(group, p1.clone().sub(delta), tmp, bondR, atom1.color);
+      this.drawCylinder(group, p2.clone().sub(delta), tmp, bondR, atom2.color);
    }
 };
 
@@ -520,8 +523,7 @@ GLmol.prototype.drawUnitcell = function(group) {
        geo.vertices.push(new TV3(vertices[edges[i]][0], vertices[edges[i]][1], vertices[edges[i]][2]));
     }
    var lineMaterial = new THREE.LineBasicMaterial({linewidth: 1, color: 0xcccccc});
-   var line = new THREE.Line(geo, lineMaterial);
-   line.type = THREE.LinePieces;
+   var line = new THREE.Line(geo, lineMaterial, THREE.LinePieces);
    group.add(line);
 };
 
@@ -559,7 +561,7 @@ GLmol.prototype.drawBondsAsLineSub = function(geo, atom1, atom2, order) {
    if (order > 1) delta = this.calcBondDelta(atom1, atom2, 0.15);
    var p1 = new TV3(atom1.x, atom1.y, atom1.z);
    var p2 = new TV3(atom2.x, atom2.y, atom2.z);
-   var mp = p1.clone().addSelf(p2).multiplyScalar(0.5);
+   var mp = p1.clone().add(p2).multiplyScalar(0.5);
 
    var c1 = new TCo(atom1.color), c2 = new TCo(atom2.color);
    if (order == 1 || order == 3) {
@@ -567,13 +569,13 @@ GLmol.prototype.drawBondsAsLineSub = function(geo, atom1, atom2, order) {
       vs.push(p2); cs.push(c2); vs.push(mp); cs.push(c2);
    }
    if (order > 1) {
-      vs.push(p1.clone().addSelf(delta)); cs.push(c1);
-      vs.push(tmp = mp.clone().addSelf(delta)); cs.push(c1);
-      vs.push(p2.clone().addSelf(delta)); cs.push(c2);
+      vs.push(p1.clone().add(delta)); cs.push(c1);
+      vs.push(tmp = mp.clone().add(delta)); cs.push(c1);
+      vs.push(p2.clone().add(delta)); cs.push(c2);
       vs.push(tmp); cs.push(c2);
-      vs.push(p1.clone().subSelf(delta)); cs.push(c1);
-      vs.push(tmp = mp.clone().subSelf(delta)); cs.push(c1);
-      vs.push(p2.clone().subSelf(delta)); cs.push(c2);
+      vs.push(p1.clone().sub(delta)); cs.push(c1);
+      vs.push(tmp = mp.clone().sub(delta)); cs.push(c1);
+      vs.push(p2.clone().sub(delta)); cs.push(c2);
       vs.push(tmp); cs.push(c2);
    }
 };
@@ -607,8 +609,7 @@ GLmol.prototype.drawBondsAsLine = function(group, atomlist, lineWidth) {
    var lineMaterial = new THREE.LineBasicMaterial({linewidth: lineWidth});
    lineMaterial.vertexColors = true;
 
-   var line = new THREE.Line(geo, lineMaterial);
-   line.type = THREE.LinePieces;
+   var line = new THREE.Line(geo, lineMaterial, THREE.LinePieces);
    group.add(line);
 };
 
@@ -673,9 +674,9 @@ GLmol.prototype.drawSmoothTube = function(group, _points, colors, radii) {
       var delta, axis1, axis2;
 
       if (i < lim - 1) {
-         delta = new TV3().sub(points[i], points[i + 1]);
+         delta = new TV3().subVectors(points[i], points[i + 1]);
          axis1 = new TV3(0, - delta.z, delta.y).normalize().multiplyScalar(r);
-         axis2 = new TV3().cross(delta, axis1).normalize().multiplyScalar(r);
+         axis2 = new TV3().crossVectors(delta, axis1).normalize().multiplyScalar(r);
 //      var dir = 1, offset = 0;
          if (prevAxis1.dot(axis1) < 0) {
                  axis1.negate(); axis2.negate();  //dir = -1;//offset = 2 * Math.PI / axisDiv;
@@ -700,8 +701,8 @@ GLmol.prototype.drawSmoothTube = function(group, _points, colors, radii) {
       var c =  new TCo(colors[Math.round((i - 1)/ axisDiv)]);
 
       var reg = 0;
-      var r1 = new TV3().sub(geo.vertices[offset], geo.vertices[offset + circleDiv]).lengthSq();
-      var r2 = new TV3().sub(geo.vertices[offset], geo.vertices[offset + circleDiv + 1]).lengthSq();
+      var r1 = new TV3().subVectors(geo.vertices[offset], geo.vertices[offset + circleDiv]).lengthSq();
+      var r2 = new TV3().subVectors(geo.vertices[offset], geo.vertices[offset + circleDiv + 1]).lengthSq();
       if (r1 > r2) {r1 = r2; reg = 1;};
       for (var j = 0; j < circleDiv; j++) {
           geo.faces.push(new TF3(offset + j, offset + (j + reg) % circleDiv + circleDiv, offset + (j + 1) % circleDiv));
@@ -715,6 +716,7 @@ GLmol.prototype.drawSmoothTube = function(group, _points, colors, radii) {
    geo.computeVertexNormals(false);
    var mat = new THREE.MeshLambertMaterial();
    mat.vertexColors = THREE.FaceColors;
+   mat.side = THREE.DoubleSide;
    var mesh = new THREE.Mesh(geo, mat);
    mesh.doubleSided = true;
    group.add(mesh);
@@ -787,32 +789,40 @@ GLmol.prototype.drawStrip = function(group, p1, p2, colors, div, thickness) {
       vs.push(p2v = p2[i]); // 2
       vs.push(p2v); // 3
       if (i < lim - 1) {
-         var toNext = p1[i + 1].clone().subSelf(p1[i]);
-         var toSide = p2[i].clone().subSelf(p1[i]);
-         axis = toSide.crossSelf(toNext).normalize().multiplyScalar(thickness);
+         var toNext = p1[i + 1].clone().sub(p1[i]);
+         var toSide = p2[i].clone().sub(p1[i]);
+         axis = toSide.cross(toNext).normalize().multiplyScalar(thickness);
       }
-      vs.push(a1v = p1[i].clone().addSelf(axis)); // 4
+      vs.push(a1v = p1[i].clone().add(axis)); // 4
       vs.push(a1v); // 5
-      vs.push(a2v = p2[i].clone().addSelf(axis)); // 6
+      vs.push(a2v = p2[i].clone().add(axis)); // 6
       vs.push(a2v); // 7
    }
    var faces = [[0, 2, -6, -8], [-4, -2, 6, 4], [7, 3, -5, -1], [-3, -7, 1, 5]];
    for (var i = 1, lim = p1.length; i < lim; i++) {
       var offset = 8 * i, color = new TCo(colors[Math.round((i - 1)/ div)]);
       for (var j = 0; j < 4; j++) {
-         var f = new THREE.Face4(offset + faces[j][0], offset + faces[j][1], offset + faces[j][2], offset + faces[j][3], undefined, color);
-         fs.push(f);
+         //fs.push(new THREE.Face4(offset + faces[j][0], offset + faces[j][1], offset + faces[j][2], offset + faces[j][3], undefined, color));
+         fs.push(new THREE.Face3(offset + faces[j][0], offset + faces[j][1], offset + faces[j][2], undefined, color));
+         fs.push(new THREE.Face3(offset + faces[j][0], offset + faces[j][2], offset + faces[j][3], undefined, color));
       }
    }
    var vsize = vs.length - 8; // Cap
    for (var i = 0; i < 4; i++) {vs.push(vs[i * 2]); vs.push(vs[vsize + i * 2])};
    vsize += 8;
-   fs.push(new THREE.Face4(vsize, vsize + 2, vsize + 6, vsize + 4, undefined, fs[0].color));
-   fs.push(new THREE.Face4(vsize + 1, vsize + 5, vsize + 7, vsize + 3, undefined, fs[fs.length - 3].color));
+   //fs.push(new THREE.Face4(vsize, vsize + 2, vsize + 6, vsize + 4, undefined, fs[0].color));
+   fs.push(new THREE.Face3(vsize + 0, vsize + 2, vsize + 6, undefined, fs[0].color));
+   fs.push(new THREE.Face3(vsize + 0, vsize + 6, vsize + 4, undefined, fs[0].color));
+   
+   //fs.push(new THREE.Face4(vsize + 1, vsize + 5, vsize + 7, vsize + 3, undefined, fs[fs.length - 3].color));
+   fs.push(new THREE.Face3(vsize + 1, vsize + 5, vsize + 7, undefined, fs[fs.length - 3].color));
+   fs.push(new THREE.Face3(vsize + 1, vsize + 7, vsize + 3, undefined, fs[fs.length - 3].color));
+   
    geo.computeFaceNormals();
    geo.computeVertexNormals(false);
-   var material =  new THREE.MeshLambertMaterial();
+   var material = new THREE.MeshLambertMaterial();
    material.vertexColors = THREE.FaceColors;
+   material.side = THREE.DoubleSide;
    var mesh = new THREE.Mesh(geo, material);
    mesh.doubleSided = true;
    group.add(mesh);
@@ -826,7 +836,11 @@ GLmol.prototype.drawThinStrip = function(group, p1, p2, colors, div) {
       geo.vertices.push(p2[i]); // 2i + 1
    }
    for (var i = 1, lim = p1.length; i < lim; i++) {
-      var f = new THREE.Face4(2 * i, 2 * i + 1, 2 * i - 1, 2 * i - 2);
+      var f = new THREE.Face3(2 * i, 2 * i + 1, 2 * i - 1);
+      f.color = new TCo(colors[Math.round((i - 1)/ div)]);
+      geo.faces.push(f);
+      
+      var f = new THREE.Face3(2 * i - 2, 2 * i - 1, 2 * i );
       f.color = new TCo(colors[Math.round((i - 1)/ div)]);
       geo.faces.push(f);
    }
@@ -834,6 +848,7 @@ GLmol.prototype.drawThinStrip = function(group, p1, p2, colors, div) {
    geo.computeVertexNormals(false);
    var material =  new THREE.MeshLambertMaterial();
    material.vertexColors = THREE.FaceColors;
+   material.side = THREE.DoubleSide;
    var mesh = new THREE.Mesh(geo, material);
    mesh.doubleSided = true;
    group.add(mesh);
@@ -845,10 +860,37 @@ GLmol.prototype.IcosahedronGeometry = function() {
    return this.icosahedron;
 };
 
+
+GLmol.prototype.rotateX = function ( m, angle ) {
+   var te = m.elements;
+   var m12 = te[4];
+   var m22 = te[5];
+   var m32 = te[6];
+   var m42 = te[7];
+   var m13 = te[8];
+   var m23 = te[9];
+   var m33 = te[10];
+   var m43 = te[11];
+   var c = Math.cos( angle );
+   var s = Math.sin( angle );
+
+   te[4] = c * m12 + s * m13;
+   te[5] = c * m22 + s * m23;
+   te[6] = c * m32 + s * m33;
+   te[7] = c * m42 + s * m43;
+
+   te[8] = c * m13 - s * m12;
+   te[9] = c * m23 - s * m22;
+   te[10] = c * m33 - s * m32;
+   te[11] = c * m43 - s * m42;
+
+   return m;
+};
+
 GLmol.prototype.drawCylinder = function(group, from, to, radius, color, cap) {
    if (!from || !to) return;
 
-   var midpoint = new TV3().add(from, to).multiplyScalar(0.5);
+   var midpoint = new TV3().addVectors(from, to).multiplyScalar(0.5);
    var color = new TCo(color);
 
    if (!this.cylinderGeometry) {
@@ -857,14 +899,16 @@ GLmol.prototype.drawCylinder = function(group, from, to, radius, color, cap) {
       this.faceVertexUvs = [];
    }
    var cylinderMaterial = new THREE.MeshLambertMaterial({color: color.getHex()});
+   cylinderMaterial.side = THREE.DoubleSide;
    var cylinder = new THREE.Mesh(this.cylinderGeometry, cylinderMaterial);
-   cylinder.position = midpoint;
+   cylinder.position.copy(midpoint); //dima: cylinder.position = midpoint;
    cylinder.lookAt(from);
    cylinder.updateMatrix();
    cylinder.matrixAutoUpdate = false;
    var m = new THREE.Matrix4().makeScale(radius, radius, from.distanceTo(to));
-   m.rotateX(Math.PI / 2);
-   cylinder.matrix.multiplySelf(m);
+   this.rotateX( m, Math.PI / 2 ); //dima: m.rotateX(Math.PI / 2);
+   
+   cylinder.matrix.multiply(m);
    group.add(cylinder);
 };
 
@@ -931,7 +975,7 @@ GLmol.prototype.drawStrand = function(group, atomlist, num, div, fill, coilWidth
             colors.push(atom.color);
          } else { // O
             var O = new TV3(atom.x, atom.y, atom.z);
-            O.subSelf(currentCA);
+            O.sub(currentCA);
             O.normalize(); // can be omitted for performance
             O.multiplyScalar((ss == 'c') ? coilWidth : helixSheetWidth); 
             if (prevCO != undefined && O.dot(prevCO) < 0) O.negate();
@@ -1003,6 +1047,7 @@ GLmol.prototype.drawNucleicAcidLadder = function(group, atomlist) {
    geo.computeFaceNormals();
    var mat = new THREE.MeshLambertMaterial();
    mat.vertexColors = THREE.VertexColors;
+   mat.side = THREE.DoubleSide;
    var mesh = new THREE.Mesh(geo, mat);
    mesh.doubleSided = true;
    group.add(mesh);
@@ -1112,7 +1157,7 @@ GLmol.prototype.drawStrandNucleicAcid = function(group, atomlist, num, div, fill
          } else { // OP2
             if (!currentO3) {prevOO = null; continue;} // for 5' phosphate (e.g. 3QX3)
             var O = new TV3(atom.x, atom.y, atom.z);
-            O.subSelf(currentO3);
+            O.sub(currentO3);
             O.normalize().multiplyScalar(nucleicAcidWidth);  // TODO: refactor
             if (prevOO != undefined && O.dot(prevOO) < 0) {
                O.negate();
@@ -1145,7 +1190,7 @@ GLmol.prototype.drawDottedLines = function(group, points, color) {
 
     for (var i = 0, lim = Math.floor(points.length / 2); i < lim; i++) {
         var p1 = points[2 * i], p2 = points[2 * i + 1];
-        var delta = p2.clone().subSelf(p1);
+        var delta = p2.clone().sub(p1);
         var dist = delta.length();
         delta.normalize().multiplyScalar(step);
         var jlim =  Math.floor(dist / step);
@@ -1351,9 +1396,9 @@ GLmol.prototype.colorByBFactor = function(atomlist, colorSidechains) {
       if (colorSidechains || atom.atom == 'CA' || atom.atom == 'O3\'') {
          var color = new TCo(0);
          if (atom.b < mid)
-            color.setHSV(0.667, (mid - atom.b) / range, 1);
+            THREE.ColorConverter.fromHSV( color, 0.667, (mid - atom.b) / range, 1);
          else
-            color.setHSV(0, (atom.b - mid) / range, 1);
+            THREE.ColorConverter.fromHSV( color, 0, (atom.b - mid) / range, 1);
          atom.color = color.getHex();
       }
    }
@@ -1366,7 +1411,7 @@ GLmol.prototype.colorByChain = function(atomlist, colorSidechains) {
       if (atom.hetflag) continue;
       if (colorSidechains || atom.atom == 'CA' || atom.atom == 'O3\'') {
          var color = new TCo(0);
-         color.setHSV((atom.chain.charCodeAt(0) * 5) % 17 / 17.0, 1, 0.9);
+         THREE.ColorConverter.fromHSV( color, (atom.chain.charCodeAt(0) * 5) % 17 / 17.0, 1, 0.9 );
          atom.color = color.getHex();
       }
    }
@@ -1418,7 +1463,7 @@ GLmol.prototype.colorChainbow = function(atomlist, colorSidechains) {
 
       if ((colorSidechains || atom.atom != 'CA' || atom.atom != 'O3\'') && !atom.hetflag) {
          var color = new TCo(0);
-         color.setHSV(240.0 / 360 * (1 - cnt / total), 1, 0.9);
+         THREE.ColorConverter.fromHSV( color, 240.0 / 360 * (1 - cnt / total), 1, 0.9);
          atom.color = color.getHex();
          cnt++;
       }
@@ -1435,7 +1480,7 @@ GLmol.prototype.drawSymmetryMates2 = function(group, asu, matrices) {
       var mat = matrices[i];
       if (mat == undefined || mat.isIdentity()) continue;
       console.log(mat);
-      var symmetryMate = THREE.SceneUtils.cloneObject(asu);
+      var symmetryMate = asu.clone(); // dima: THREE.SceneUtils.cloneObject(asu);
       symmetryMate.matrix = mat;
       group.add(symmetryMate);
       for (var j = 0; j < 16; j++) this.protein.appliedMatrix.elements[j] += mat.elements[j];
@@ -1461,9 +1506,9 @@ GLmol.prototype.drawSymmetryMatesWithTranslation2 = function(group, asu, matrice
                    p.ax * a + p.bx * b + p.cx * c,
                    p.ay * a + p.by * b + p.cy * c,
                    p.az * a + p.bz * b + p.cz * c);
-                var symop = mat.clone().multiplySelf(translationMat);
+                var symop = mat.clone().multiply(translationMat);
                 if (symop.isIdentity()) continue;
-                var symmetryMate = THREE.SceneUtils.cloneObject(asu);
+                var symmetryMate = asu.clone(); // THREE.SceneUtils.cloneObject(asu);
                 symmetryMate.matrix = symop;
                 group.add(symmetryMate);
              }
@@ -1506,7 +1551,7 @@ GLmol.prototype.setView = function(arg) {
 GLmol.prototype.setBackground = function(hex, a) {
    a = a | 1.0;
    this.bgColor = hex;
-   this.renderer.setClearColorHex(hex, a);
+   this.renderer.setClearColor(hex, a);
    this.scene.fog.color = new TCo(hex);
 };
 
@@ -1517,8 +1562,8 @@ GLmol.prototype.initializeScene = function() {
 
    this.modelGroup = new THREE.Object3D();
    this.rotationGroup = new THREE.Object3D();
-   this.rotationGroup.useQuaternion = true;
-   this.rotationGroup.quaternion = new THREE.Quaternion(1, 0, 0, 0);
+   //this.rotationGroup.useQuaternion = true; // dima: used by default
+   this.rotationGroup.quaternion.copy(new THREE.Quaternion(1, 0, 0, 0));
    this.rotationGroup.add(this.modelGroup);
 
    this.scene.add(this.rotationGroup);
@@ -1529,7 +1574,7 @@ GLmol.prototype.zoomInto = function(atomlist, keepSlab) {
    var tmp = this.getExtent(atomlist);
    var center = new TV3(tmp[2][0], tmp[2][1], tmp[2][2]);//(tmp[0][0] + tmp[1][0]) / 2, (tmp[0][1] + tmp[1][1]) / 2, (tmp[0][2] + tmp[1][2]) / 2);
    if (this.protein.appliedMatrix) {center = this.protein.appliedMatrix.multiplyVector3(center);}
-   this.modelGroup.position = center.multiplyScalar(-1);
+   this.modelGroup.position.copy(center.multiplyScalar(-1));
    var x = tmp[1][0] - tmp[0][0], y = tmp[1][1] - tmp[0][1], z = tmp[1][2] - tmp[0][2];
 
    var maxD = Math.sqrt(x * x + y * y + z * z);
@@ -1541,7 +1586,7 @@ GLmol.prototype.zoomInto = function(atomlist, keepSlab) {
    }
 
    this.rotationGroup.position.z = maxD * 0.35 / Math.tan(Math.PI / 180.0 * this.camera.fov / 2) - 150;
-   this.rotationGroup.quaternion = new THREE.Quaternion(1, 0, 0, 0);
+   this.rotationGroup.quaternion.copy(new THREE.Quaternion(1, 0, 0, 0));
 };
 
 GLmol.prototype.rebuildScene = function() {
@@ -1552,7 +1597,7 @@ GLmol.prototype.rebuildScene = function() {
    this.defineRepresentation();
    this.setView(view);
 
-   console.log("builded scene in " + (+new Date() - time) + "ms");
+   //console.log("built scene in " + (+new Date() - time) + "ms");
 };
 
 GLmol.prototype.loadMolecule = function(repressZoom) {
@@ -1620,7 +1665,7 @@ GLmol.prototype.enableMouse = function() {
       me.mouseButton = ev.which;
       me.mouseStartX = x;
       me.mouseStartY = y;
-      me.cq = me.rotationGroup.quaternion;
+      me.cq.copy(me.rotationGroup.quaternion);
       me.cz = me.rotationGroup.position.z;
       me.currentModelPos = me.modelGroup.position.clone();
       me.cslabNear = me.slabNear;
@@ -1639,6 +1684,7 @@ GLmol.prototype.enableMouse = function() {
       console.log(ev.originalEvent.wheelDelta, ev.originalEvent.detail, me.rotationGroup.position.z);
       me.show();
    });
+   
    glDOM.bind("contextmenu", function(ev) {ev.preventDefault();});
    $('body').bind('mouseup touchend', function(ev) {
       me.isDragging = false;
@@ -1674,7 +1720,7 @@ GLmol.prototype.enableMouse = function() {
          var translationByScreen = new TV3(- dx * scaleFactor, - dy * scaleFactor, 0);
          var q = me.rotationGroup.quaternion;
          var qinv = new THREE.Quaternion(q.x, q.y, q.z, q.w).inverse().normalize(); 
-         var translation = qinv.multiplyVector3(translationByScreen);
+         var translation = translationByScreen.applyQuaternion(qinv); //qinv.multiplyVector3(translationByScreen);
          me.modelGroup.position.x = me.currentModelPos.x + translation.x;
          me.modelGroup.position.y = me.currentModelPos.y + translation.y;
          me.modelGroup.position.z = me.currentModelPos.z + translation.z;
@@ -1684,9 +1730,9 @@ GLmol.prototype.enableMouse = function() {
          me.dq.y = 0;
          me.dq.z =  rs * dx; 
          me.dq.w =  rs * dy;
-         me.rotationGroup.quaternion = new THREE.Quaternion(1, 0, 0, 0); 
-         me.rotationGroup.quaternion.multiplySelf(me.dq);
-         me.rotationGroup.quaternion.multiplySelf(me.cq);
+         me.rotationGroup.quaternion.copy(new THREE.Quaternion(1, 0, 0, 0));
+         me.rotationGroup.quaternion.multiply(me.dq);
+         me.rotationGroup.quaternion.multiply(me.cq);
       }
       me.show();
    });
@@ -1698,6 +1744,9 @@ GLmol.prototype.show = function() {
 
    var time = new Date();
    this.setSlabAndFog();
+   console.log("Renderer infos:");
+   console.log(this.scene);
+   console.log(this.camera);
    this.renderer.render(this.scene, this.camera);
    console.log("rendered in " + (+new Date() - time) + "ms");
 };
@@ -1708,6 +1757,6 @@ GLmol.prototype.doFunc = function(func) {
 };
 
 return GLmol;
-}());
+}()); 
 
 module.exports = GLmol;

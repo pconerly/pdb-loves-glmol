@@ -6,6 +6,7 @@ THREE = require 'three'
 # for importing GLmol.js without making (many) changes to it.
 window.$ = $
 window.THREE = THREE
+ColorConverter = require './library/THREE.ColorConverter.js'
 
 AppStore = require './appstore.coffee'
 TopNav = require './topnav.cjsx'
@@ -35,6 +36,7 @@ Router = Backbone.Router.extend
 
   index: ->
     console.log "index"
+    AppStore.setPdbId null
     React.render(
       <TopNav/>,
       document.getElementById('admin')
@@ -46,17 +48,18 @@ Router = Backbone.Router.extend
 
   search: ->
     console.log "react"
+    AppStore.setPdbId null
     $(document).attr('title', 'react-of-life')
 
   pdbid: (query) ->
-    AppStore.fetch(query)
+    AppStore.fetchDescription query
     console.log "query: #{query}"
     React.render(
       <TopNav/>,
       document.getElementById('admin')
       )
     React.render(
-      <PDBItem item={query} />,
+      <PDBItem />,
       document.getElementById('content')
       )
     

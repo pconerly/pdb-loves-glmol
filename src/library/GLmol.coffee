@@ -1,4 +1,7 @@
 #
+# UNUSED
+#
+#
 # GLmol - Molecular Viewer on WebGL/Javascript (0.47)
 #  (C) Copyright 2011-2012, biochem_fan
 #      License: dual license of MIT or LGPL3

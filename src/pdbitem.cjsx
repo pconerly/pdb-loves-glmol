@@ -1,10 +1,10 @@
 _ = require 'underscore'
 React = require 'react'
 AppStore = require './appstore.coffee'
+GLmolComponent = require './glmolcomponent.cjsx'
 
 getAppState = ->
   return AppStore.getState()
-
 
 PDBItem = React.createClass(
 
@@ -13,14 +13,11 @@ PDBItem = React.createClass(
     return {
       config: state.config
       items: state.results
-      # item = state.results[@props.item]
+      item: null
     }
 
-  getItem: ->
-    if _.has(@state.items, @props.item)
-      return @state.items[@props.item]
-    else
-      return null
+  _onChange: () ->
+    @setState getAppState()
 
   componentDidMount: () ->
     AppStore.addChangeListener(@_onChange)
@@ -28,25 +25,17 @@ PDBItem = React.createClass(
   componentWillUnmount: () ->
     AppStore.removeChangeListener(@_onChange)
 
-  _onChange: () ->
-    # set time since last tick here?
-    @setState getAppState()
-
-  intervalChange: (e) ->
-    AppStore.updateInterval e.target.value
-
   pdbinfo: ->
-    item = @getItem()
-    unless item
+    unless @state.item
       return (
         <div className="error">
           <h4>"Protein not found."</h4>
         </div>
         )
-    if _.has item, 'description'
-      details = item.description.PDBdescription.PDB.$
+    if _.has @state.item, 'description'
+      details = @state.item.description.PDBdescription.PDB.$
       return (
-        <div className="pdb-info">
+        <div key="pdb-info" className="pdb-info">
           <h4>We got infos</h4>
           <div>
             <p>
@@ -61,25 +50,23 @@ PDBItem = React.createClass(
         )
     else
      return (
-      <div className="pdb-info">
+      <div key="pdb-3d" className="pdb-info">
         <h3>loading... (derp a little derp)</h3>
       </div>)
 
   glmol: ->
-    item = @getItem()
-    if item
-      if _.has item, 'pdbfile'
-        # call some shit. 
-        # loadMoleculeStr(false, source)
+    # ^ editorial note, this is a bad idea.  The logic should all be in GlmolComponent
+    if @state.item
+      if _.has @state.item, 'glmol'
         return(
           <div className="pdb-3d">
             <h4>3d infos!!</h4>
-            <div id="glmol_{this.props.item}"></div>
+            <GLmolComponent pdbId={this.state.curPdbId} />
           </div>
           )
     return (
       <div className="pdb-3d">
-        <div id="glmol_{this.props.item}"></div>
+        <h5>Nothing here...</h5>
       </div>)
 
   render: ->
