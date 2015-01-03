@@ -10,7 +10,7 @@ _life = {
   config: {}
   results: {} # keys: pdb-id
   searches: {} # keys: search string
-  found: []  # proteins we've actually navigated to
+  explored: {} # proteins we've actually navigated to
 }
 
 
@@ -28,11 +28,13 @@ AppStore = _.extend({}, EventEmitter::,
 
   setPdbId: (query) ->
     _life.curPdbId = query
+    if query
+      _life.explored[query] = true
     @emitChange()
 
   fetch: (query) ->
     console.log "fething #{query}"
-    _life.curPdbId = query
+    @setPdbId query
 
     @fetchDescription query
     @fetchPdbFile query
@@ -96,25 +98,27 @@ AppStore = _.extend({}, EventEmitter::,
 
     # check for existing found protein
     if _.has(_life.results, query)      
-      console.log "we've seen it before"
-      Backbone.history.navigate "pdb-id/#{query}",
+      Backbone.history.navigate "#pdb-id/#{query}",
         trigger: true
       return
 
-    # search for PDB id
-    @getPdbDescription query, (data, status) =>
-      if status is 'success'
-        jsondata = to_json data, (message, data) =>
-          if _.has data.PDBdescription, 'PDB'
-            console.log "                  found correct xml"
-            _life.results[query] = {}
-            _life.results[query].description = data
-            Backbone.history.navigate "pdb-id/#{query}",
-              trigger: true
-            return
-
-      # it isn't a success or it's a blank file.
-      @generalSearch(query)
+    else
+      # search for PDB id
+      @getPdbDescription query, (data, status) =>
+        if status isnt 'success'
+          # it isn't a success or...
+          @generalSearch(query)
+        else
+          jsondata = to_json data, (message, data) =>
+            unless _.has data.PDBdescription, 'PDB'
+              #.. it's a blank file.
+              @generalSearch(query)
+            else
+              _life.results[query] = {}
+              _life.results[query].description = data
+              Backbone.history.navigate "pdb-id/#{query}",
+                trigger: true
+              return
 
   generalSearch: (query) ->
     if _.has(_life.searches, query)
@@ -182,7 +186,7 @@ AppStore = _.extend({}, EventEmitter::,
 module.exports = AppStore
 
 
-# Other PDB queries
+# Other interesting PDB queries
 
 # data: """
 #   <?xml version="1.0" encoding="UTF-8"?>

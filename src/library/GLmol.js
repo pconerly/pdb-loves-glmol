@@ -1744,11 +1744,11 @@ GLmol.prototype.show = function() {
 
    var time = new Date();
    this.setSlabAndFog();
-   console.log("Renderer infos:");
-   console.log(this.scene);
-   console.log(this.camera);
+   // console.log("Renderer infos:");
+   // console.log(this.scene);
+   // console.log(this.camera);
    this.renderer.render(this.scene, this.camera);
-   console.log("rendered in " + (+new Date() - time) + "ms");
+   // console.log("rendered in " + (+new Date() - time) + "ms");
 };
 
 // For scripting

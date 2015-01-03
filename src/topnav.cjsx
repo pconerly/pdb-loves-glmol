@@ -18,10 +18,7 @@ TopNav = React.createClass(
 
   getInitialState: ->
     state = getAppState()
-    return {
-      config: state.config
-      items: state.results
-    }
+    return state
 
   getItem: ->
     if _.has(@state.items, @props.item)
@@ -42,7 +39,7 @@ TopNav = React.createClass(
   render: ->
 
     pdbs = []
-    keys = _.keys @state.items
+    keys = _.keys @state.explored
     keys = _.sortBy keys, (key) ->
       key  # sort by key
 
