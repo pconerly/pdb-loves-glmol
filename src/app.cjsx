@@ -12,7 +12,7 @@ AppStore = require './appstore.coffee'
 TopNav = require './topnav.cjsx'
 PDBSearch = require './pdbsearch.cjsx'
 PDBItem = require './pdbitem.cjsx'
-
+SearchPage = require './searchpage.cjsx'
 
 Backbone.$ = $
 
@@ -22,6 +22,7 @@ WelcomePage = React.createClass(
       <p>Welcome to the WebGL protein viewer.
       </p>
       <PDBSearch />
+      {this.props.children}
     </span>
 )
 
@@ -30,12 +31,11 @@ Router = Backbone.Router.extend
 
   routes:
     "": "index"
-    "search": "search"
+    "search/:term": "search"
     "pdb-id/:query": "pdbid"
     "backbone": "backbone"
 
   index: ->
-    console.log "index"
     AppStore.setPdbId null
     React.render(
       <TopNav/>,
@@ -46,14 +46,22 @@ Router = Backbone.Router.extend
       document.getElementById('content')
       )
 
-  search: ->
-    console.log "react"
+  search: (term) ->
     AppStore.setPdbId null
-    $(document).attr('title', 'react-of-life')
+    AppStore.search(encodeURIComponent(term))
+    React.render(
+      <TopNav/>,
+      document.getElementById('admin')
+      )
+    React.render(
+      <WelcomePage>
+        <SearchPage term={term}/>
+      </WelcomePage>,
+      document.getElementById('content')
+      )
 
   pdbid: (query) ->
     AppStore.fetch query
-    console.log "query: #{query}"
     React.render(
       <TopNav/>,
       document.getElementById('admin')

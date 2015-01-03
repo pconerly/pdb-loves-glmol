@@ -2,10 +2,6 @@ React = require "react"
 Input = require('react-bootstrap').Input
 AppStore = require './appstore.coffee'
 
-
-getLifeState = ->
-  return LifeStore.getState()
-
 PDBSearch = React.createClass(
   getInitialState: ->
     value: ""

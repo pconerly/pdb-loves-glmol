@@ -13,7 +13,8 @@ PDBItem = React.createClass(
     return {
       config: state.config
       items: state.results
-      item: null
+      item: state.item
+      curPdbId: state.curPdbId
     }
 
   _onChange: () ->
@@ -55,7 +56,8 @@ PDBItem = React.createClass(
       </div>)
 
   glmol: ->
-    # ^ editorial note, this is a bad idea.  The logic should all be in GlmolComponent
+    # ^ editorial note, this method a bad idea.  
+    # TODO: The logic should all be in GlmolComponent
     if @state.item
       if _.has @state.item, 'pdbfile'
         return(

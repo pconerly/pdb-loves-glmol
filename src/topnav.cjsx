@@ -61,7 +61,7 @@ TopNav = React.createClass(
     <Navbar>
       <Nav>
         <NavItem eventKey={1} href="#">Home</NavItem>
-        <DropdownButton eventKey={3} title="Proteins searched for:" className={disabled}>
+        <DropdownButton eventKey={3} title="Proteins explored:" className={disabled}>
           {pdbs}
         </DropdownButton>
       </Nav>
