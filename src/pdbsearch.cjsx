@@ -21,9 +21,9 @@ PDBSearch = React.createClass(
     <Input
       type="text"
       value={this.state.value}
-      placeholder="4hhb"
+      placeholder="peanut, human, 1bzw, 2por, 4hhb"
       label="Search the PDB"
-      help="Validates based on string length."
+      help="Enter a PDBid or a search keyword for the title of a paper. "
       hasFeedback
       ref="input"
       groupClassName="group-class"
