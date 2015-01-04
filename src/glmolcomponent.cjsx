@@ -56,6 +56,7 @@ GLmolComponent = React.createClass(
       # and render
       # @state.item.glmol.loadMoleculeStr(false, window.pdbfile) # @state.item.pdffile)
       @state.item.glmol.loadMoleculeStr(false, @state.item.pdbfile)
+      @state.item.glmol.enableMouse()
 )
 
 
