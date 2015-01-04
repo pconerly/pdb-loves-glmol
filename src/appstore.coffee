@@ -56,7 +56,7 @@ AppStore = _.extend({}, EventEmitter::,
 
   getPdbDescription: (query, callback) ->
     $.ajax
-      url: "http://www.rcsb.org/pdb/rest/describePDB?structureId=#{query}"
+      url: "//www.rcsb.org/pdb/rest/describePDB?structureId=#{query}"
       method: 'GET'
       dataType: 'text' # it's xml, but we want the string
       crossDomain: true
@@ -79,7 +79,7 @@ AppStore = _.extend({}, EventEmitter::,
       return
 
     $.ajax
-      url: "http://www.pdb.org/pdb/files/#{query}.pdb"
+      url: "//www.pdb.org/pdb/files/#{query}.pdb"
       method: 'GET'
       dataType: 'text'
       crossDomain: true
@@ -125,7 +125,7 @@ AppStore = _.extend({}, EventEmitter::,
       return
 
     $.ajax
-      url: "http://www.rcsb.org/pdb/rest/search/?req=browser"
+      url: "//www.rcsb.org/pdb/rest/search/?req=browser"
       # url: "http://peterproxy.flaregun.io/pdb/rest/search/?req=browser" ## my dakka proxy
       method: 'POST'
       dataType: 'text'
