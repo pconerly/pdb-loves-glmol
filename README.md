@@ -3,6 +3,6 @@
 
 This is a single-page app that mashes up the Protein Data Bank and GLmol.
 
-Built with React, mostly using the Flex design pattern. Backbone routes were used at times.
+Built with React, mostly using the Flux design pattern. Backbone routes were used at times.
 
 Except for libraries used (jquery, Backbone, React, GLmol, THREE.js) this is Copyright Peter Conerly 2014-2014.

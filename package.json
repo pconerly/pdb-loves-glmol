@@ -8,10 +8,10 @@
     "handlebars": "^2.0.0",
     "jquery": "^2.1.1",
     "react": "~0.12.1",
+    "react-bootstrap": "^0.13.0",
+    "three": "~0.69.0",
     "underscore": "^1.7.0",
     "underscore.string": "^2.3.3",
-    "react-bootstrap": "~0.13.0",
-    "three": "~0.69.0",
     "xmljson": "~0.2.0"
   },
   "devDependencies": {
